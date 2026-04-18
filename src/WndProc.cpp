@@ -7,6 +7,31 @@
 #define PADDING_LEFT 12
 #define TEXT_BYTE_GAP 48
 
+// I want that it don't reads more than 3 MB of file, either way, no need to read more than that, so I will for future use, modify it so that file is read in 3 parts
+// I will have 3 buffers 1 MB each, one of them will save the whole thing being displayed on screen other two are extra's to quickly switch from current pointer to next
+// My goal is to save memory, why read all when can be done in less (either its not like you need all the data at once)
+// That is
+
+// BufferA
+// BufferB
+// BufferC
+
+// ReadFromPointer -> BufferB
+
+// always read from pointer named ReadFromPointer
+// When scroll bar is near start change pointer to BufferA, load more previous data in BufferB and so on
+// but need to think of a mechanism to switch data properly
+
+// Found online that there are two ways in which I can handle this: 
+// 1. Same as above 3 buffer sliding window manual implementation but this is prone to Seam Bug and is difficult to handle (but will try to make it someday)
+
+// 2. Second method is memory mapped files, rather than loading and creating a sliding window manually I can use Windows Inbuilt function made for exact same purpose
+// because this sas such a common problem, windows have it inbuilt: "CreateFileMapping" and "MapViewOfFile". This is the shit that I studied in OS, for exact details:
+// You tell the OS: "Map this entire 50GB file into my virtual memory space."
+// The OS gives you back a single unsigned char* buffer pointer.
+// The Magic : The OS does not load 50GB into your RAM.It loads 0 bytes.
+// When your WM_PAINT loop tries to read buffer[0], the CPU triggers a "Page Fault." The OS pauses your app for a microsecond, grabs a tiny 4KB chunk of the file from the hard drive, puts it in RAM, and lets your app continue.
+
 ATOM OpenFile(HWND hWnd, LARGE_INTEGER& fileSize, static const TCHAR* path, static unsigned char** buffer) {
 	if (*buffer) {
 		delete[] *buffer;
@@ -58,6 +83,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	static RECT clientRect;
 	static TEXTMETRIC tm;
 	static SCROLLINFO sf;
+
+	// Scroll speed controls using keys
+	static int speedY = 0;
+	static int maxSpeedY = 32;
+	static BOOL keyDownPressed = FALSE;
+	static BOOL keyUpPressed = FALSE;
 
 	switch (msg)
 	{
@@ -113,6 +144,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	}
 	case WM_PAINT:
 	{
+		// Personal Notes:
 		// Start reading from first byte
 		// print every byte
 		// on every 8th byte change to next line
@@ -220,6 +252,31 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 
 			return 0; 
 		}
+
+		if (wparam == VK_DOWN) {
+			speedY += 2; 
+		}
+		else if (wparam == VK_UP) {
+			speedY -= 2;
+		}
+		else {
+			break; 
+		}
+
+		if (speedY > maxSpeedY) speedY = maxSpeedY;
+		if (speedY < -maxSpeedY) speedY = -maxSpeedY;
+
+		sf.nPos += speedY;
+
+		int maxScroll = contentHeight - viewportHeight;
+		if (maxScroll < 0) maxScroll = 0;
+
+		if (sf.nPos > maxScroll) sf.nPos = maxScroll;
+		if (sf.nPos < 0) sf.nPos = 0;
+
+		sf.fMask = SIF_POS;
+		SetScrollInfo(hWnd, SB_VERT, &sf, TRUE);
+		InvalidateRect(hWnd, NULL, TRUE);
 
 		if (wparam == VK_RETURN) {
 
