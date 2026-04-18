@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="HexViewer.vcxproj" Id="96ea6df5-0a7d-48bd-8109-7541c546061b" />
+</Solution>
