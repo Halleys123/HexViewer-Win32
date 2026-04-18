@@ -1,0 +1,11 @@
+.vs/
+HexViewer/
+x64/
+*.user
+*.vc.db
+*.pdb
+*.ilk
+*.obj
+*.res
+*.log
+*.recipe
