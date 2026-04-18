@@ -7,7 +7,7 @@
 #define PADDING_LEFT 12
 #define TEXT_BYTE_GAP 48
 
-// I want that it don't reads more than 3 MB of file, either way, no need to read more than that, so I will for future use, modify it so that file is read in 3 parts
+// For next thing I want that it don't reads more than 3 MB of file, either way, no need to read more than that, so I will for future use, modify it so that file is read in 3 parts
 // I will have 3 buffers 1 MB each, one of them will save the whole thing being displayed on screen other two are extra's to quickly switch from current pointer to next
 // My goal is to save memory, why read all when can be done in less (either its not like you need all the data at once)
 // That is
@@ -31,6 +31,10 @@
 // The OS gives you back a single unsigned char* buffer pointer.
 // The Magic : The OS does not load 50GB into your RAM.It loads 0 bytes.
 // When your WM_PAINT loop tries to read buffer[0], the CPU triggers a "Page Fault." The OS pauses your app for a microsecond, grabs a tiny 4KB chunk of the file from the hard drive, puts it in RAM, and lets your app continue.
+
+// More future ideas
+// There is a function called ScrollWindowEx this function allows to reduce cpu usage by 99% as this is a hardware level function that moves pixels at hardware level,
+// use it to acheive flicker free, very low memory usage version of hex editor
 
 ATOM OpenFile(HWND hWnd, LARGE_INTEGER& fileSize, static const TCHAR* path, static unsigned char** buffer) {
 	if (*buffer) {
@@ -180,7 +184,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 			}
 
 			for (int byte = 0; byte < bytesPerLines && byte + line * bytesPerLines < fileSize.QuadPart; byte += 1) {
-				int xPos = PADDING_LEFT + (3 * charWidth) + 16 + (bytesPerLines * hexSpacing) + TEXT_BYTE_GAP + (byte * hexSpacing);
+				int xPos = PADDING_LEFT + (3 * charWidth) + 16 + (bytesPerLines * hexSpacing) + TEXT_BYTE_GAP + (byte * hexSpacing / 2);
 				TextOutA(hdc, xPos, relativeY, (char*)buffer + (byte + line * bytesPerLines), 1);
 			}
 		}
@@ -253,31 +257,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 			return 0; 
 		}
 
-		if (wparam == VK_DOWN) {
-			speedY += 2; 
-		}
-		else if (wparam == VK_UP) {
-			speedY -= 2;
-		}
-		else {
-			break; 
-		}
-
-		if (speedY > maxSpeedY) speedY = maxSpeedY;
-		if (speedY < -maxSpeedY) speedY = -maxSpeedY;
-
-		sf.nPos += speedY;
-
-		int maxScroll = contentHeight - viewportHeight;
-		if (maxScroll < 0) maxScroll = 0;
-
-		if (sf.nPos > maxScroll) sf.nPos = maxScroll;
-		if (sf.nPos < 0) sf.nPos = 0;
-
-		sf.fMask = SIF_POS;
-		SetScrollInfo(hWnd, SB_VERT, &sf, TRUE);
-		InvalidateRect(hWnd, NULL, TRUE);
-
 		if (wparam == VK_RETURN) {
 
 			tempPath[tempPathIndex] = '\0';
@@ -314,6 +293,33 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 				tempPath[tempPathIndex--] = '\0';
 			}
 		}
+
+
+		if (wparam == VK_DOWN) {
+			speedY += 2;
+		}
+		else if (wparam == VK_UP) {
+			speedY -= 2;
+		}
+		else {
+			break;
+		}
+
+		if (speedY > maxSpeedY) speedY = maxSpeedY;
+		if (speedY < -maxSpeedY) speedY = -maxSpeedY;
+
+		sf.nPos += speedY;
+
+		int maxScroll = contentHeight - viewportHeight;
+		if (maxScroll < 0) maxScroll = 0;
+
+		if (sf.nPos > maxScroll) sf.nPos = maxScroll;
+		if (sf.nPos < 0) sf.nPos = 0;
+
+		sf.fMask = SIF_POS;
+		SetScrollInfo(hWnd, SB_VERT, &sf, TRUE);
+		InvalidateRect(hWnd, NULL, TRUE);
+
 		break;
 	}
 
