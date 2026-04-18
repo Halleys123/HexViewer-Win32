@@ -14,3 +14,5 @@ A small Win32 hex reader.
 
 - The app reads the whole file into memory.
 - Paths are limited to 260 characters.
+
+![alt text](./docs/image.png)
